@@ -155,14 +155,14 @@ possible), never only in the UI.
 
 ## Assumptions (confirm or correct)
 
-- **Country**: Guatemala (the name "droguería"). GTQ currency,
+- **Country**: Guatemala. GTQ currency,
   IVA taxes, Spanish UI, and electronic invoicing as a future integration.
 - **Single store, multiple registers** for the MVP; schema keeps a `store_id` so multi-store
   can be added later.
 - **Currency**: GTQ with 2 decimals stored (display may hide them).
 - **Taxes**: per-product tax rate (12%); prices entered tax-included.
 - **Roles**: `admin`, `pharmacist`, `cashier` are enough for the MVP.
-- **E-invoicing (DIAN)** and card payment terminals are out of MVP scope; sales produce an
+- **E-invoicing (SAT)** and card payment terminals are out of MVP scope; sales produce an
   internal receipt. The design keeps a hook for an invoicing provider.
 - **Online-only POS** for the MVP (no offline mode).
 - **Purchasing** is included (needed to bring lots and expiry dates into stock).
