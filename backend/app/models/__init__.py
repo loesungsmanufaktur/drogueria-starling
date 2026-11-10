@@ -1,5 +1,6 @@
 from app.db import ddl
 from app.db.base import Base
+from app.models.alerts import Alert, AlertType
 from app.models.audit import AuditLog
 from app.models.catalog import ActiveIngredient, Category, Product, ProductIngredient
 from app.models.customers import Customer, Prescription, PrescriptionItem
@@ -28,6 +29,8 @@ from app.services import audit as _audit  # noqa: E402, F401
 
 __all__ = [
     "ActiveIngredient",
+    "Alert",
+    "AlertType",
     "AuditLog",
     "Base",
     "Category",
