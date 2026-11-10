@@ -11,6 +11,8 @@ from app.core.security import create_token, hash_password
 from app.models import Lot, MovementType, Product, Role, StockMovement, User
 
 PASSWORD = "secret-pass-123"
+# A complete card payment (SAL-11, SAL-12) to merge into payment dicts.
+CARD = {"reference": "AUTH-0001", "card_type": "visa", "card_last4": "4242"}
 _seq = itertools.count(1)
 
 

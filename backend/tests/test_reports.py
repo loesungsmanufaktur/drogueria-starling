@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import store_today
 from app.models import Register, RegisterShift, Role
 from app.services import reports
-from tests.factories import approval, auth, make_lot, make_product, make_user
+from tests.factories import CARD, approval, auth, make_lot, make_product, make_user
 
 
 def test_sec4_business_day_uses_store_timezone() -> None:
@@ -37,7 +37,9 @@ async def test_daily_sales_excludes_voids_and_subtracts_returns(
             json={
                 "register_id": register.id,
                 "lines": [{"product_id": product.id, "quantity": qty}],
-                "payments": [{"method": method, "amount": f"{qty * 10}.00"}],
+                "payments": [{"method": method, "amount": f"{qty * 10}.00", **CARD}]
+                if method == "card"
+                else [{"method": method, "amount": f"{qty * 10}.00"}],
             },
         )
         return resp.json()  # type: ignore[no-any-return]

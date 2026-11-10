@@ -18,6 +18,9 @@ const { t } = useI18n()
     <p class="center small">
       {{ sale.register_name }} · {{ new Date(sale.created_at).toLocaleString() }}
     </p>
+    <!-- SAL-10: customer name and NIT/CUI (CF for consumidor final). -->
+    <p class="small">{{ t('pos.customer') }}: {{ sale.customer_name }}</p>
+    <p class="small">{{ t('customers.documentId') }}: {{ sale.customer_tax_id }}</p>
     <p v-if="sale.void" class="center">
       <strong>** {{ t('sales.voided') }} **</strong>
     </p>
@@ -46,10 +49,20 @@ const { t } = useI18n()
       <span>{{ t('common.total') }}</span
       ><span>{{ formatMoney(sale.total) }}</span>
     </div>
-    <div v-for="(p, i) in sale.payments" :key="i" class="split small">
-      <span>{{ t(`pos.methods.${p.method}`) }}</span
-      ><span>{{ formatMoney(p.amount) }}</span>
-    </div>
+    <template v-for="(p, i) in sale.payments" :key="i">
+      <div class="split small">
+        <span>{{ t(`pos.methods.${p.method}`) }}</span
+        ><span>{{ formatMoney(p.amount) }}</span>
+      </div>
+      <div v-if="p.method === 'card'" class="small detail">
+        {{ p.card_type ? t(`pos.cards.${p.card_type}`) : '' }} **** {{ p.card_last4 }} ·
+        {{ t('pos.reference') }}
+        {{ p.reference }}
+      </div>
+      <div v-else-if="p.method === 'transfer'" class="small detail">
+        {{ p.bank_name }} · {{ t('pos.reference') }} {{ p.reference }}
+      </div>
+    </template>
     <div v-if="sale.cash_tendered" class="split small">
       <span>{{ t('pos.tendered') }}</span
       ><span>{{ formatMoney(sale.cash_tendered) }}</span>
@@ -98,6 +111,10 @@ const { t } = useI18n()
 
 .line {
   margin-bottom: 0.25rem;
+}
+
+.detail {
+  padding-left: 0.5rem;
 }
 
 hr {

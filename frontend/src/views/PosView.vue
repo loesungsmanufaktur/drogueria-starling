@@ -2,13 +2,23 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import CustomerDialog from '@/components/CustomerDialog.vue'
 import ReceiptView from '@/components/ReceiptView.vue'
 import { useApproval } from '@/composables/useApproval'
 import { useErrors } from '@/composables/useErrors'
 import { catalogApi, customersApi, inventoryApi, posApi } from '@/services/api'
 import { errorCode } from '@/services/http'
-import { useCartStore } from '@/stores/cart'
-import type { Customer, Lot, PaymentMethod, Product, Register, Sale, Shift } from '@/types/api'
+import { missingPaymentDetails, newPayment, useCartStore } from '@/stores/cart'
+import type {
+  CardType,
+  Customer,
+  Lot,
+  PaymentMethod,
+  Product,
+  Register,
+  Sale,
+  Shift,
+} from '@/types/api'
 import { formatMoney, fromCents } from '@/utils/money'
 
 const { t } = useI18n()
@@ -28,15 +38,21 @@ const scan = ref('')
 const results = ref<Product[]>([])
 const lots = ref<Record<number, Lot[]>>({})
 
-const customerQuery = ref('')
-const customerResults = ref<Customer[]>([])
+// Popup asking for the customer's NIT/CUI when the first item is added.
+const askCustomer = ref(false)
 
 const completed = ref<Sale | null>(null)
 const busy = ref(false)
 const methods: PaymentMethod[] = ['cash', 'card', 'transfer']
+const cardTypes: CardType[] = ['visa', 'mastercard', 'amex']
 
 const canCharge = computed(
-  () => cart.lines.length > 0 && cart.balance === 0 && !cart.needsPrescription && !busy.value,
+  () =>
+    cart.lines.length > 0 &&
+    cart.balance === 0 &&
+    cart.paymentsComplete &&
+    !cart.needsPrescription &&
+    !busy.value,
 )
 
 async function loadShift(): Promise<void> {
@@ -88,12 +104,16 @@ async function addProduct(product: Product): Promise<void> {
   cart.add(product)
   results.value = []
   scan.value = ''
+  if (!cart.customerAsked && !cart.customer) {
+    cart.customerAsked = true
+    askCustomer.value = true
+  }
   if (!lots.value[product.id]) {
     lots.value[product.id] = await inventoryApi.lots({ product_id: product.id })
   }
   if (cart.lines.length && cart.payments.length === 0) cart.payAllCash()
   else syncCashPayment()
-  focusScan()
+  if (!askCustomer.value) focusScan()
 }
 
 /** A barcode scanner types the code and presses Enter. */
@@ -118,26 +138,16 @@ function syncCashPayment(): void {
   }
 }
 
-async function searchCustomers(): Promise<void> {
-  if (!customerQuery.value.trim()) return
-  await errors.run(async () => {
-    customerResults.value = await customersApi.search(customerQuery.value)
-  })
-}
-
 async function selectCustomer(customer: Customer | null): Promise<void> {
-  customerResults.value = []
-  customerQuery.value = ''
-  const rx = customer ? await customersApi.prescriptions(customer.id) : []
-  cart.setCustomer(customer, rx)
+  await errors.run(async () => {
+    const rx = customer ? await customersApi.prescriptions(customer.id) : []
+    cart.setCustomer(customer, rx)
+  })
+  focusScan()
 }
 
 function addPayment(): void {
-  cart.payments.push({
-    method: 'card',
-    amount: fromCents(Math.max(cart.balance, 0)),
-    reference: '',
-  })
+  cart.payments.push(newPayment('card', fromCents(Math.max(cart.balance, 0))))
 }
 
 async function charge(): Promise<void> {
@@ -167,6 +177,7 @@ function newSale(): void {
 }
 
 function onKey(event: KeyboardEvent): void {
+  if (askCustomer.value) return
   if (event.key === 'F2') {
     event.preventDefault()
     focusScan()
@@ -372,26 +383,15 @@ function rxOptions(productId: number) {
     <aside class="stack">
       <div class="card stack">
         <h2>{{ t('pos.customer') }}</h2>
-        <div v-if="cart.customer" class="row">
+        <div class="row">
           <span class="grow">
-            {{ cart.customer.full_name }}
-            <span class="muted">{{ cart.customer.document_id }}</span>
+            {{ cart.customer?.full_name ?? t('pos.noCustomer') }}
+            <span class="muted">
+              {{ t('customers.documentId') }}: {{ cart.customer?.document_id ?? 'CF' }}
+            </span>
           </span>
-          <button class="link" @click="selectCustomer(null)">{{ t('common.remove') }}</button>
+          <button class="link" @click="askCustomer = true">{{ t('pos.changeCustomer') }}</button>
         </div>
-        <template v-else>
-          <span class="muted">{{ t('pos.noCustomer') }}</span>
-          <form class="row" @submit.prevent="searchCustomers">
-            <input v-model="customerQuery" class="grow" :placeholder="t('pos.findCustomer')" />
-            <button type="submit">{{ t('common.search') }}</button>
-          </form>
-          <ul v-if="customerResults.length" class="results">
-            <li v-for="c in customerResults" :key="c.id">
-              <button class="link" @click="selectCustomer(c)">{{ c.full_name }}</button>
-              <span class="muted">{{ c.document_id }}</span>
-            </li>
-          </ul>
-        </template>
       </div>
 
       <div class="card stack totals">
@@ -415,12 +415,50 @@ function rxOptions(productId: number) {
 
       <div class="card stack">
         <h2>{{ t('pos.payments') }}</h2>
-        <div v-for="(payment, i) in cart.payments" :key="i" class="row">
-          <select v-model="payment.method" :aria-label="t('pos.payments')">
-            <option v-for="m in methods" :key="m" :value="m">{{ t(`pos.methods.${m}`) }}</option>
-          </select>
-          <input v-model="payment.amount" inputmode="decimal" class="grow" />
-          <button class="link danger" @click="cart.payments.splice(i, 1)">✕</button>
+        <div v-for="(payment, i) in cart.payments" :key="i" class="stack payment">
+          <div class="row">
+            <select v-model="payment.method" :aria-label="t('pos.payments')">
+              <option v-for="m in methods" :key="m" :value="m">{{ t(`pos.methods.${m}`) }}</option>
+            </select>
+            <input v-model="payment.amount" inputmode="decimal" class="grow" />
+            <button class="link danger" @click="cart.payments.splice(i, 1)">✕</button>
+          </div>
+          <!-- SAL-11 / SAL-12: reference details for card and transfer payments. -->
+          <div v-if="payment.method !== 'cash'" class="grid-2 details">
+            <label>
+              {{ t('pos.reference') }}
+              <input v-model="payment.reference" maxlength="80" required />
+            </label>
+            <template v-if="payment.method === 'card'">
+              <label>
+                {{ t('pos.cardType') }}
+                <select v-model="payment.cardType" required>
+                  <option value="" disabled>—</option>
+                  <option v-for="c in cardTypes" :key="c" :value="c">
+                    {{ t(`pos.cards.${c}`) }}
+                  </option>
+                </select>
+              </label>
+              <label>
+                {{ t('pos.cardLast4') }}
+                <input
+                  v-model="payment.cardLast4"
+                  inputmode="numeric"
+                  maxlength="4"
+                  pattern="[0-9]{4}"
+                  autocomplete="off"
+                  required
+                />
+              </label>
+            </template>
+            <label v-else>
+              {{ t('pos.bankName') }}
+              <input v-model="payment.bankName" maxlength="80" required />
+            </label>
+            <span v-if="missingPaymentDetails(payment).length" class="error">
+              {{ t('pos.paymentDetailsMissing') }}
+            </span>
+          </div>
         </div>
         <div class="row">
           <button @click="cart.payAllCash()">{{ t('pos.payAllCash') }}</button>
@@ -445,6 +483,7 @@ function rxOptions(productId: number) {
       </div>
     </aside>
   </div>
+  <CustomerDialog v-model="askCustomer" @select="selectCustomer" />
 </template>
 
 <style scoped>
@@ -502,6 +541,15 @@ function rxOptions(productId: number) {
 .charge {
   font-size: 1.1rem;
   padding: 0.7rem;
+}
+
+.payment + .payment {
+  border-top: 1px solid var(--border);
+  padding-top: 0.5rem;
+}
+
+.details {
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
 
 .open-shift,

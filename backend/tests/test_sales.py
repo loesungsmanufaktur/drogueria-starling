@@ -23,7 +23,7 @@ from app.models import (
     StockMovement,
     User,
 )
-from tests.factories import approval, auth, make_lot, make_product, make_user
+from tests.factories import CARD, approval, auth, make_lot, make_product, make_user
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 
@@ -208,7 +208,10 @@ async def test_sal3_payments_must_equal_total(
             pos,
             line,
             None,
-            payments=[{"method": "cash", "amount": "4.00"}, {"method": "card", "amount": "6.00"}],
+            payments=[
+                {"method": "cash", "amount": "4.00"},
+                {"method": "card", "amount": "6.00", **CARD},
+            ],
             cash_tendered="5.00",
         ),
     )
@@ -278,7 +281,7 @@ async def test_sal9_close_shift_records_difference(
     line = [{"product_id": product.id, "quantity": 2}]
     await checkout(client, pos, sale(pos, line, "20.00"))
     await checkout(
-        client, pos, sale(pos, line, None, payments=[{"method": "card", "amount": "20.00"}])
+        client, pos, sale(pos, line, None, payments=[{"method": "card", "amount": "20.00", **CARD}])
     )
 
     current = (await client.get("/api/v1/shifts/current", headers=pos.h)).json()
@@ -429,7 +432,7 @@ async def test_sal5_partial_returns_restock_and_refund_exactly(
 # --- prescriptions and controlled products (CAT-2, CAT-3, SEC-3) -------------------
 
 
-async def _customer(session: AsyncSession, document_id: str | None = "1234567890101") -> Customer:
+async def _customer(session: AsyncSession, document_id: str = "1234567890101") -> Customer:
     customer = Customer(full_name="Juan Pérez", document_id=document_id)
     session.add(customer)
     await session.commit()
@@ -518,7 +521,7 @@ async def test_cat3_controlled_needs_id_prescriber_and_pharmacist(
     )
     await make_lot(session, product, 10)
 
-    anonymous = await _customer(session, document_id=None)
+    anonymous = await _customer(session, document_id="CF")
     rx = (await _prescription(client, pos, anonymous, product)).json()
     line = {"product_id": product.id, "quantity": 1, "prescription_id": rx["id"]}
     resp = await checkout(client, pos, sale(pos, [line], "50.00"), approval(pos.pharmacist))

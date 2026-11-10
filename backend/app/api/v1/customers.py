@@ -10,6 +10,7 @@ from app.core.errors import AppError, NotFound
 from app.models import Customer, Prescription
 from app.schemas.customers import (
     CustomerIn,
+    CustomerLookup,
     CustomerOut,
     CustomerSearch,
     CustomerUpdate,
@@ -25,6 +26,11 @@ router = APIRouter(tags=["customers"])
 @router.post("/customers/search", response_model=list[CustomerOut])
 async def search_customers(session: Session, _: AnyUser, body: CustomerSearch) -> list[Customer]:
     return await customers_service.search_customers(session, body.q)
+
+
+@router.post("/customers/lookup", response_model=CustomerOut)
+async def lookup_customer(session: Session, _: AnyUser, body: CustomerLookup) -> Customer:
+    return await customers_service.lookup_customer(session, body.document_id)
 
 
 @router.get("/customers/{customer_id}", response_model=CustomerOut)

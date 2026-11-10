@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
-from app.models import PaymentMethod, ShiftStatus
+from app.models import CardType, PaymentMethod, ShiftStatus
 from app.schemas.common import Money, ORMModel, Percent
 
 
@@ -70,6 +70,10 @@ class PaymentIn(BaseModel):
     method: PaymentMethod
     amount: Money = Field(gt=0)
     reference: str | None = Field(default=None, max_length=80)
+    card_type: CardType | None = None
+    # SAL-12: only the last 4 digits are ever sent or stored.
+    card_last4: str | None = Field(default=None, pattern=r"^\d{4}$")
+    bank_name: str | None = Field(default=None, max_length=80)
 
 
 class SaleIn(BaseModel):
@@ -104,6 +108,9 @@ class PaymentOut(ORMModel):
     method: PaymentMethod
     amount: Decimal
     reference: str | None
+    card_type: CardType | None
+    card_last4: str | None
+    bank_name: str | None
 
 
 class SaleVoidOut(ORMModel):
@@ -146,6 +153,8 @@ class SaleOut(ORMModel):
     receipt_number: int
     user_id: int
     customer_id: int | None
+    customer_name: str
+    customer_tax_id: str
     approved_by: int | None
     subtotal: Decimal
     tax_total: Decimal

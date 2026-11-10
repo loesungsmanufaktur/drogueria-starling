@@ -7,6 +7,7 @@ from app.models.customers import Customer, Prescription, PrescriptionItem
 from app.models.inventory import Lot, MovementType, StockMovement
 from app.models.purchasing import PurchaseOrder, PurchaseOrderLine, PurchaseStatus, Supplier
 from app.models.sales import (
+    CardType,
     Payment,
     PaymentMethod,
     Register,
@@ -33,6 +34,7 @@ __all__ = [
     "AlertType",
     "AuditLog",
     "Base",
+    "CardType",
     "Category",
     "Customer",
     "Lot",

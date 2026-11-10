@@ -1,7 +1,14 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 
-import type { Customer, PaymentMethod, Prescription, Product, SaleInput } from '@/types/api'
+import type {
+  CardType,
+  Customer,
+  PaymentMethod,
+  Prescription,
+  Product,
+  SaleInput,
+} from '@/types/api'
 import { fromCents, priceLine, toCents } from '@/utils/money'
 
 export interface CartLine {
@@ -17,6 +24,25 @@ export interface CartPayment {
   method: PaymentMethod
   amount: string
   reference: string
+  cardType: CardType | ''
+  cardLast4: string
+  bankName: string
+}
+
+export function newPayment(method: PaymentMethod, amount: string): CartPayment {
+  return { method, amount, reference: '', cardType: '', cardLast4: '', bankName: '' }
+}
+
+/** SAL-11 / SAL-12: what a card or transfer payment still needs. */
+export function missingPaymentDetails(p: CartPayment): string[] {
+  if (p.method === 'cash') return []
+  const missing: string[] = []
+  if (!p.reference.trim()) missing.push('reference')
+  if (p.method === 'card') {
+    if (!p.cardType) missing.push('cardType')
+    if (!/^\d{4}$/.test(p.cardLast4)) missing.push('cardLast4')
+  } else if (!p.bankName.trim()) missing.push('bankName')
+  return missing
 }
 
 let nextKey = 1
@@ -27,6 +53,8 @@ export const useCartStore = defineStore('cart', () => {
   const prescriptions = ref<Prescription[]>([])
   const payments = ref<CartPayment[]>([])
   const cashTendered = ref('')
+  // The POS asks for the customer's NIT/CUI once per sale, on the first item.
+  const customerAsked = ref(false)
 
   const priced = computed(() =>
     lines.value.map((line) => ({
@@ -65,6 +93,9 @@ export const useCartStore = defineStore('cart', () => {
     return Math.max(0, toCents(cashTendered.value) - cashDue.value)
   })
   const balance = computed(() => totals.value.total - paid.value)
+  const paymentsComplete = computed(() =>
+    payments.value.every((p) => missingPaymentDetails(p).length === 0),
+  )
   const needsPrescription = computed(() =>
     lines.value.some((l) => l.product.requires_prescription && l.prescriptionId === null),
   )
@@ -108,7 +139,7 @@ export const useCartStore = defineStore('cart', () => {
 
   /** Default to a single cash payment for the full total. */
   function payAllCash(): void {
-    payments.value = [{ method: 'cash', amount: fromCents(totals.value.total), reference: '' }]
+    payments.value = [newPayment('cash', fromCents(totals.value.total))]
   }
 
   function toSaleInput(registerId: number): SaleInput {
@@ -127,7 +158,10 @@ export const useCartStore = defineStore('cart', () => {
         .map((p) => ({
           method: p.method,
           amount: fromCents(toCents(p.amount)),
-          reference: p.reference || null,
+          reference: p.method === 'cash' ? null : p.reference.trim(),
+          card_type: p.method === 'card' && p.cardType ? p.cardType : null,
+          card_last4: p.method === 'card' ? p.cardLast4 : null,
+          bank_name: p.method === 'transfer' ? p.bankName.trim() : null,
         })),
       cash_tendered:
         cashTendered.value && cashDue.value > 0 ? fromCents(toCents(cashTendered.value)) : null,
@@ -140,6 +174,7 @@ export const useCartStore = defineStore('cart', () => {
     prescriptions.value = []
     payments.value = []
     cashTendered.value = ''
+    customerAsked.value = false
   }
 
   return {
@@ -148,6 +183,8 @@ export const useCartStore = defineStore('cart', () => {
     prescriptions,
     payments,
     cashTendered,
+    customerAsked,
+    paymentsComplete,
     priced,
     totals,
     paid,

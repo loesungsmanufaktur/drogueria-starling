@@ -1,19 +1,35 @@
 from datetime import date
 
-from sqlalchemy import CheckConstraint, ForeignKey, String, Text, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, Index, String, Text, UniqueConstraint, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, CreatedAtMixin, IdMixin
 from app.models.catalog import Product
+
+# "Consumidor final": the NIT used when a customer has no NIT/CUI (SAL-13).
+CONSUMIDOR_FINAL = "CF"
+CONSUMIDOR_FINAL_NAME = "Consumidor Final"
 
 
 class Customer(IdMixin, CreatedAtMixin, Base):
     """Personal data (SEC-3): never logged, readable only by roles that need it."""
 
     __tablename__ = "customers"
+    __table_args__ = (
+        # SAL-13: unique per real NIT/CUI; any number of customers can be CF.
+        Index(
+            "uq_customers_document_id_not_cf",
+            "document_id",
+            unique=True,
+            postgresql_where=text(f"document_id <> '{CONSUMIDOR_FINAL}'"),
+        ),
+    )
 
     full_name: Mapped[str] = mapped_column(String(160))
-    document_id: Mapped[str | None] = mapped_column(String(30), unique=True)  # DPI / NIT
+    # NIT or CUI, normalized (no spaces/hyphens, upper case); CF when the customer has none.
+    document_id: Mapped[str] = mapped_column(
+        String(30), default=CONSUMIDOR_FINAL, server_default=CONSUMIDOR_FINAL
+    )
     phone: Mapped[str | None] = mapped_column(String(40))
     email: Mapped[str | None] = mapped_column(String(120))
 

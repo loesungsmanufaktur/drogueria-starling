@@ -132,7 +132,8 @@ export interface PurchaseOrder {
 export interface Customer {
   id: number
   full_name: string
-  document_id: string | null
+  /** NIT or CUI; "CF" (consumidor final) when the customer has none. */
+  document_id: string
   phone: string | null
   email: string | null
 }
@@ -190,6 +191,16 @@ export interface Shift {
 }
 
 export type PaymentMethod = 'cash' | 'card' | 'transfer'
+export type CardType = 'visa' | 'mastercard' | 'amex'
+
+export interface PaymentDetails {
+  method: PaymentMethod
+  amount: Money
+  reference: string | null
+  card_type: CardType | null
+  card_last4: string | null
+  bank_name: string | null
+}
 
 export interface SaleLine {
   id: number
@@ -224,6 +235,8 @@ export interface Sale {
   receipt_number: number
   user_id: number
   customer_id: number | null
+  customer_name: string
+  customer_tax_id: string
   approved_by: number | null
   subtotal: Money
   tax_total: Money
@@ -233,7 +246,7 @@ export interface Sale {
   change_given: Money
   created_at: string
   lines: SaleLine[]
-  payments: { method: PaymentMethod; amount: Money; reference: string | null }[]
+  payments: PaymentDetails[]
   void: { document_number: number; reason: string; created_at: string } | null
   returns: SaleReturn[]
 }
@@ -248,7 +261,7 @@ export interface SaleInput {
     lot_id: number | null
     prescription_id: number | null
   }[]
-  payments: { method: PaymentMethod; amount: Money; reference: string | null }[]
+  payments: PaymentDetails[]
   cash_tendered: Money | null
 }
 

@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import get_settings
 from app.core.errors import AppError, Conflict, NotFound
 from app.models import Customer, Prescription, PrescriptionItem, Product, User
-from app.schemas.customers import CustomerIn, CustomerUpdate, PrescriptionMeta
+from app.models.customers import CONSUMIDOR_FINAL
+from app.schemas.customers import CustomerIn, CustomerUpdate, PrescriptionMeta, normalize_tax_id
 
 # CAT-2: prescriptions are attached as JPG/JPEG, PNG or PDF, checked by
 # extension *and* file signature so a renamed file is not accepted.
@@ -26,7 +27,10 @@ async def save_customer(
     customer = Customer() if customer_id is None else await session.get(Customer, customer_id)
     if customer is None:
         raise NotFound("CUSTOMER_NOT_FOUND", "Customer not found")
-    for key, value in data.model_dump(exclude_unset=customer_id is not None).items():
+    changes = data.model_dump(exclude_unset=customer_id is not None)
+    if "document_id" in changes and changes["document_id"] is None:
+        changes["document_id"] = CONSUMIDOR_FINAL  # SAL-13: no NIT/CUI means CF
+    for key, value in changes.items():
         setattr(customer, key, value)
     session.add(customer)
     try:
@@ -37,14 +41,30 @@ async def save_customer(
     return customer
 
 
+async def lookup_customer(session: AsyncSession, document_id: str) -> Customer:
+    """Exact NIT/CUI match. CF is shared by many customers, so it never matches one."""
+    if document_id == CONSUMIDOR_FINAL:
+        raise AppError("CF_NOT_LOOKUP", "CF is not a customer number; sell as consumidor final")
+    customer = (
+        await session.execute(select(Customer).where(Customer.document_id == document_id))
+    ).scalar_one_or_none()
+    if customer is None:
+        raise NotFound("CUSTOMER_NOT_FOUND", "No customer with this NIT/CUI")
+    return customer
+
+
 async def search_customers(session: AsyncSession, q: str, limit: int = 20) -> list[Customer]:
     term = q.strip().lower()
+    try:
+        tax_id: str | None = normalize_tax_id(q)
+    except ValueError:
+        tax_id = None
     stmt = (
         select(Customer)
         .where(
             or_(
                 func.lower(Customer.full_name).contains(term),
-                Customer.document_id == q.strip(),
+                Customer.document_id == tax_id,
                 Customer.phone == q.strip(),
             )
         )

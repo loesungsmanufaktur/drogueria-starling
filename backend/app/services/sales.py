@@ -35,7 +35,8 @@ from app.models import (
     ShiftStatus,
     User,
 )
-from app.schemas.sales import ReturnIn, SaleIn, SaleLineIn
+from app.models.customers import CONSUMIDOR_FINAL, CONSUMIDOR_FINAL_NAME
+from app.schemas.sales import PaymentIn, ReturnIn, SaleIn, SaleLineIn
 from app.services import auth, inventory, shifts
 
 
@@ -105,6 +106,27 @@ def price_line(product: Product, data: SaleLineIn) -> PricedLine:
     total = gross - discount
     tax = q2(total * product.tax_rate / (100 + product.tax_rate))
     return PricedLine(data, product, gross, discount, total, tax)
+
+
+def check_payment_details(payment: PaymentIn) -> None:
+    """SAL-11 / SAL-12: card and transfer payments carry their reference details."""
+    if payment.method == PaymentMethod.CASH:
+        payment.reference = payment.card_type = payment.card_last4 = payment.bank_name = None
+        return
+    payment.reference = (payment.reference or "").strip() or None
+    if payment.reference is None:
+        raise AppError("PAYMENT_REFERENCE_REQUIRED", "Card and transfer payments need a reference")
+    if payment.method == PaymentMethod.CARD:
+        if payment.card_type is None or payment.card_last4 is None:
+            raise AppError(
+                "CARD_DETAILS_REQUIRED", "Card payments need the card type and its last 4 digits"
+            )
+        payment.bank_name = None
+    else:
+        payment.bank_name = (payment.bank_name or "").strip() or None
+        if payment.bank_name is None:
+            raise AppError("BANK_NAME_REQUIRED", "Transfers need the sending bank's name")
+        payment.card_type = payment.card_last4 = None
 
 
 async def checkout(
@@ -222,7 +244,8 @@ async def checkout(
             )
         rx_item.dispensed_quantity += item.quantity
         if product.controlled:
-            if not customer.document_id:
+            # CF is not an identification (CAT-3, SAL-13).
+            if customer.document_id == CONSUMIDOR_FINAL:
                 raise AppError(
                     "CUSTOMER_ID_REQUIRED", "Controlled products need the customer's document"
                 )
@@ -246,6 +269,8 @@ async def checkout(
         if data.cash_tendered < cash:
             raise AppError("CASH_TENDERED_INSUFFICIENT", "Cash tendered is less than cash due")
         change = data.cash_tendered - cash
+    for payment in data.payments:
+        check_payment_details(payment)
 
     # --- write the sale (SAL-8: gap-free receipt number) ------------------
     receipt_number = register.next_receipt_number
@@ -257,6 +282,9 @@ async def checkout(
         receipt_number=receipt_number,
         user_id=user.id,
         customer_id=customer.id if customer else None,
+        # SAL-10: a sale without a customer is to "Consumidor Final", NIT CF.
+        customer_name=customer.full_name if customer else CONSUMIDOR_FINAL_NAME,
+        customer_tax_id=customer.document_id if customer else CONSUMIDOR_FINAL,
         approved_by=approver.id if approver else None,
         subtotal=total - tax_total,
         tax_total=tax_total,
@@ -265,7 +293,15 @@ async def checkout(
         cash_tendered=data.cash_tendered,
         change_given=change,
         payments=[
-            Payment(method=p.method, amount=p.amount, reference=p.reference) for p in data.payments
+            Payment(
+                method=p.method,
+                amount=p.amount,
+                reference=p.reference,
+                card_type=p.card_type,
+                card_last4=p.card_last4,
+                bank_name=p.bank_name,
+            )
+            for p in data.payments
         ],
     )
     session.add(sale)

@@ -21,6 +21,7 @@ SAL-9,"A cashier must open a register shift (opening cash) before selling and cl
 SAL-10,Receipts must contain customer name and NIT/CUI,Sales & money
 SAL-11,"Card and transfers must contain a reference number, specific for cards the card type is required (visa, master card and amex are standards), for transfers the incoming bank name is required",Sales & money
 SAL-12,For card payments store the last 4 digits,Sales & money
+SAL-13,"Every customer has a NIT/CUI; when the customer has none it is recorded as CF (consumidor final). CF is not a valid identification for controlled products (CAT-3).",Sales & money
 SEC-1,"Every create/update/delete on business data writes an audit log entry (who, when, what, before/after). Audit entries are append-only.",Security & audit
 SEC-2,Role permissions are checked on the backend for every endpoint.,Security & audit
 SEC-3,"Customer and prescription data are personal/health data: only the roles that need them can read them, and they never appear in logs.",Security & audit

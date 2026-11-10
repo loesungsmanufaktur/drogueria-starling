@@ -121,6 +121,9 @@ export const purchasingApi = {
 export const customersApi = {
   // Personal data goes in the request body, never in the URL (SEC-3).
   search: async (q: string) => (await http.post<Customer[]>('/customers/search', { q })).data,
+  /** Exact NIT/CUI match; rejects with CUSTOMER_NOT_FOUND when there is none. */
+  lookup: async (document_id: string) =>
+    (await http.post<Customer>('/customers/lookup', { document_id })).data,
   get: (id: number) => get<Customer>(`/customers/${id}`),
   create: async (body: Omit<Customer, 'id'>) =>
     (await http.post<Customer>('/customers', body)).data,

@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
+import CustomerForm from '@/components/CustomerForm.vue'
 import { useErrors } from '@/composables/useErrors'
 import { catalogApi, customersApi } from '@/services/api'
 import { useAuthStore } from '@/stores/auth'
@@ -15,7 +16,8 @@ const q = ref('')
 const results = ref<Customer[]>([])
 const selected = ref<Customer | null>(null)
 const prescriptions = ref<Prescription[]>([])
-const customerForm = ref<Omit<Customer, 'id'> | null>(null)
+// null: closed; 'new': creating; a customer: editing it.
+const customerForm = ref<Customer | 'new' | null>(null)
 
 const rxForm = ref<{
   prescriber_name: string
@@ -45,22 +47,9 @@ function nullable(value: string | null): string | null {
   return value && value.trim() ? value.trim() : null
 }
 
-async function saveCustomer(): Promise<void> {
-  const form = customerForm.value
-  if (!form) return
-  const body = {
-    full_name: form.full_name,
-    document_id: nullable(form.document_id),
-    phone: nullable(form.phone),
-    email: nullable(form.email),
-  }
-  const ok = await errors.run(async () => {
-    const saved = selected.value
-      ? await customersApi.update(selected.value.id, body)
-      : await customersApi.create(body)
-    await select(saved)
-  })
-  if (ok) customerForm.value = null
+async function onSaved(customer: Customer): Promise<void> {
+  customerForm.value = null
+  await select(customer)
 }
 
 function startRx(): void {
@@ -127,7 +116,7 @@ async function openFile(rx: Prescription): Promise<void> {
           @click="
             () => {
               selected = null
-              customerForm = { full_name: '', document_id: '', phone: '', email: '' }
+              customerForm = 'new'
             }
           "
         >
@@ -147,28 +136,25 @@ async function openFile(rx: Prescription): Promise<void> {
     </section>
 
     <section class="stack">
-      <form v-if="customerForm" class="card stack" @submit.prevent="saveCustomer">
-        <label
-          >{{ t('customers.fullName') }}<input v-model="customerForm.full_name" required
-        /></label>
-        <label>{{ t('customers.documentId') }}<input v-model="customerForm.document_id" /></label>
-        <label>{{ t('customers.phone') }}<input v-model="customerForm.phone" /></label>
-        <label>{{ t('customers.email') }}<input v-model="customerForm.email" type="email" /></label>
-        <div class="row">
-          <button class="primary" type="submit">{{ t('common.save') }}</button>
-          <button type="button" @click="customerForm = null">{{ t('common.cancel') }}</button>
-        </div>
-      </form>
+      <CustomerForm
+        v-if="customerForm"
+        :key="customerForm === 'new' ? 'new' : customerForm.id"
+        class="card"
+        :customer="customerForm === 'new' ? null : customerForm"
+        @saved="onSaved"
+        @cancel="customerForm = null"
+      />
 
       <div v-if="selected" class="card stack">
         <div class="row">
           <h2 class="grow">{{ selected.full_name }}</h2>
-          <button class="link" @click="customerForm = { ...selected }">
+          <button class="link" @click="customerForm = selected">
             {{ t('common.edit') }}
           </button>
         </div>
         <p class="muted">
-          {{ selected.document_id ?? '—' }} · {{ selected.phone ?? '—' }} ·
+          {{ t('customers.documentId') }}: {{ selected.document_id }} ·
+          {{ selected.phone ?? '—' }} ·
           {{ selected.email ?? '—' }}
         </p>
         <div class="row">

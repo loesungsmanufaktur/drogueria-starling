@@ -17,6 +17,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import ddl
 from app.db.base import Base, CreatedAtMixin, IdMixin, enum_type
+from app.models.customers import CONSUMIDOR_FINAL, CONSUMIDOR_FINAL_NAME
 
 
 class Register(IdMixin, Base):
@@ -88,6 +89,22 @@ class PaymentMethod(StrEnum):
     TRANSFER = "transfer"
 
 
+class CardType(StrEnum):
+    VISA = "visa"
+    MASTERCARD = "mastercard"
+    AMEX = "amex"
+
+
+# SAL-11 / SAL-12 at the database level. The migration adds them NOT VALID so
+# payments recorded before these rules (immutable, SAL-5) stay as they are.
+PAYMENT_DETAIL_CHECKS = {
+    "card_details": "method <> 'card' OR (reference IS NOT NULL AND card_type IS NOT NULL "
+    "AND card_last4 ~ '^[0-9]{4}$')",
+    "transfer_details": "method <> 'transfer' OR (reference IS NOT NULL AND bank_name IS NOT NULL)",
+    "card_fields_only_for_cards": "method = 'card' OR (card_type IS NULL AND card_last4 IS NULL)",
+}
+
+
 class Sale(IdMixin, CreatedAtMixin, Base):
     """Completed sales are immutable (SAL-5); see the triggers below."""
 
@@ -102,6 +119,9 @@ class Sale(IdMixin, CreatedAtMixin, Base):
     receipt_number: Mapped[int]
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     customer_id: Mapped[int | None] = mapped_column(ForeignKey("customers.id"), index=True)
+    # SAL-10: the receipt shows the customer's name and NIT/CUI as they were at the sale.
+    customer_name: Mapped[str] = mapped_column(String(160), server_default=CONSUMIDOR_FINAL_NAME)
+    customer_tax_id: Mapped[str] = mapped_column(String(30), server_default=CONSUMIDOR_FINAL)
     approved_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"))
     subtotal: Mapped[Decimal]  # total without tax
     tax_total: Mapped[Decimal]
@@ -161,12 +181,19 @@ class SaleLineLot(IdMixin, Base):
 
 class Payment(IdMixin, Base):
     __tablename__ = "payments"
-    __table_args__ = (CheckConstraint("amount > 0", name="amount_positive"),)
+    __table_args__ = (
+        CheckConstraint("amount > 0", name="amount_positive"),
+        *[CheckConstraint(sql, name=name) for name, sql in PAYMENT_DETAIL_CHECKS.items()],
+    )
 
     sale_id: Mapped[int] = mapped_column(ForeignKey("sales.id"), index=True)
     method: Mapped[PaymentMethod] = mapped_column(enum_type(PaymentMethod))
     amount: Mapped[Decimal]
     reference: Mapped[str | None] = mapped_column(String(80))
+    # SAL-11 / SAL-12: card type and only the last 4 digits; bank for transfers.
+    card_type: Mapped[CardType | None] = mapped_column(enum_type(CardType))
+    card_last4: Mapped[str | None] = mapped_column(String(4))
+    bank_name: Mapped[str | None] = mapped_column(String(80))
 
 
 class SaleVoid(IdMixin, CreatedAtMixin, Base):
