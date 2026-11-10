@@ -1,7 +1,8 @@
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
 
-from sqlalchemy import BigInteger, DateTime, MetaData, Numeric, func
+from sqlalchemy import BigInteger, DateTime, Enum, MetaData, Numeric, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 NAMING_CONVENTION = {
@@ -21,6 +22,18 @@ class Base(DeclarativeBase):
         Decimal: Money,  # rule 11: money is NUMERIC(14,2), never float
         datetime: DateTime(timezone=True),  # rule 23: timestamps are timestamptz (UTC)
     }
+
+
+def enum_type(enum_cls: type[StrEnum]) -> Enum:
+    """Store a StrEnum as VARCHAR + CHECK constraint (no native PG enum to migrate)."""
+    return Enum(
+        enum_cls,
+        name=enum_cls.__name__.lower(),
+        native_enum=False,
+        create_constraint=True,
+        length=30,
+        values_callable=lambda e: [m.value for m in e],
+    )
 
 
 class IdMixin:

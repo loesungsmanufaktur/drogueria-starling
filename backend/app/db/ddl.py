@@ -36,6 +36,9 @@ def register(group: str, statements: list[str]) -> None:
     STATEMENTS[group] = statements
 
 
+register("core", [FORBID_CHANGES_FN])
+
+
 def run_group(conn: Connection, group: str) -> None:
     for stmt in STATEMENTS[group]:
         conn.execute(text(stmt))
