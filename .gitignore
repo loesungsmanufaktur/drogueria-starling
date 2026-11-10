@@ -181,3 +181,7 @@ cython_debug/
 .cursorindexingignore
 # Uploaded prescriptions (personal health data) — never commit
 backend/uploads/
+
+# Frontend
+node_modules/
+*.tsbuildinfo
