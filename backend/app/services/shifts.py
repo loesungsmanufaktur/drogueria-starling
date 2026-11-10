@@ -136,7 +136,7 @@ def ensure_can_view(user: User, shift: RegisterShift) -> None:
 async def close_shift(
     session: AsyncSession, user: User, shift_id: int, data: ShiftCloseIn
 ) -> RegisterShift:
-    """Rule 19: the difference between counted and expected cash is recorded, not hidden."""
+    """SAL-9: the difference between counted and expected cash is recorded, not hidden."""
     shift = await get_shift(session, shift_id, lock=True)
     ensure_can_view(user, shift)
     if shift.status != ShiftStatus.OPEN:

@@ -10,7 +10,7 @@ from app.services import reports
 from tests.factories import approval, auth, make_lot, make_product, make_user
 
 
-def test_rule23_business_day_uses_store_timezone() -> None:
+def test_sec4_business_day_uses_store_timezone() -> None:
     # Guatemala is UTC-6 all year: the store day starts at 06:00 UTC.
     start, end = reports.day_bounds(date(2026, 3, 10))
     assert start == datetime(2026, 3, 10, 6, 0, tzinfo=UTC)

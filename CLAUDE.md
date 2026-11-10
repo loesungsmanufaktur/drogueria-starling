@@ -99,7 +99,7 @@ docker-compose.yml
 >
 > Work in small, reviewable increments, one module at a time, each with migrations, tests
 > (pytest for services and endpoints, Vitest for stores/components) and passing lint
-> (ruff + mypy, eslint + vue-tsc). Every rule under **Strict business rules** must be covered by
+> (ruff + mypy, eslint + vue-tsc). Every rule in `docs/business-rules.csv` must be covered by
 > at least one automated test. If a rule is ambiguous or conflicts with a request, stop and ask.
 
 ## Strict business rules
@@ -107,55 +107,23 @@ docker-compose.yml
 These are non-negotiable. Enforce them in the **service layer** (and with DB constraints where
 possible), never only in the UI.
 
-### Inventory & expiry
-1. Stock can never go negative — at product or lot level. A sale that exceeds available stock
-   is rejected, not partially fulfilled.
-2. Every product unit belongs to a lot with a lot number and an expiry date. No lot, no stock.
-3. Expired lots cannot be sold. A lot is sellable only if `expiry_date > today` (store timezone).
-4. Sales consume stock **FEFO** (first expired, first out) unless a pharmacist overrides it,
-   and the override is audited.
-5. Stock changes only through `stock_movements` entries. Movements are append-only: never
-   updated or deleted; corrections are new compensating movements.
-6. Manual adjustments and expiry write-offs require `pharmacist` or `admin` and a reason.
+The full rule text lives in [docs/business-rules.csv](docs/business-rules.csv)
+(columns: `Rule Code`, `Description`, `Rule category`). Read it before changing business logic,
+and refer to rules by code (e.g. `INV-1`) in code comments, tests and commits.
 
-### Catalog & regulatory
-7. sanitary registration number is an optional field.
-8. Products flagged `requires_prescription` can only be sold with a prescription reference
-   attached to the sale line, should accept jpg, jpeg, png or pdf
-9. Products flagged `controlled` additionally require: customer identification, prescriber data,
-   a pharmacist's approval on the sale, and quantity no greater than what the prescription allows.
-10. Products are deactivated, never hard-deleted, once they have movements or sales.
+| Rule category        | Code prefix |
+|----------------------|-------------|
+| Inventory & expiry   | `INV`       |
+| Catalog & regulatory | `CAT`       |
+| Sales & money        | `SAL`       |
+| Security & audit     | `SEC`       |
 
-### Sales & money
-11. All money uses `NUMERIC(14,2)` in the DB and `Decimal` in Python — never floats.
-    Rounding is half-up at line level, then totals are summed.
-12. Checkout is atomic: sale, lines, lot decrements, stock movements and payments are written in
-    one transaction, or nothing is written.
-13. Sum of payments must equal the sale total (change is computed for cash, not stored as payment).
-14. Prices and tax rates are copied onto each sale line at the moment of sale; later catalog
-    changes never alter past sales.
-15. Completed sales are immutable. Corrections are done with a return or void document that
-    references the original sale and restocks via movements.
-16. Voids are allowed only for the same register shift and require `pharmacist`/`admin`.
-    Returns of Rx/controlled products require pharmacist approval.
-17. Discounts above the configured cashier limit require `pharmacist`/`admin` authorization.
-    A sale price can never be below cost unless an admin authorizes it.
-18. Receipt/invoice numbers are sequential, gap-free per register, and never reused.
-19. A cashier must open a register shift (opening cash) before selling and close it (counted
-    cash vs. expected) at the end; the difference is recorded, not hidden.
-
-### Security & audit
-20. Every create/update/delete on business data writes an audit log entry
-    (who, when, what, before/after). Audit entries are append-only.
-21. Role permissions are checked on the backend for every endpoint.
-22. Customer and prescription data are personal/health data: only the roles that need them can
-    read them, and they never appear in logs.
-23. All timestamps are stored in UTC (`timestamptz`); business dates (expiry, shift date) use the
-    store's configured timezone.
+Codes are numbered within each category and never reused; a new rule takes the next free
+number in its category.
 
 ## Assumptions (confirm or correct)
 
-- **Country**: Guatemala. GTQ currency,
+- **Country**: Guatemala. GTQ currency, date format dd-mmm-yyyy
   IVA taxes, Spanish UI, and electronic invoicing as a future integration.
 - **Single store, multiple registers** for the MVP; schema keeps a `store_id` so multi-store
   can be added later.

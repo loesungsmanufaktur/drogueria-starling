@@ -125,8 +125,8 @@ async def _receiving_lot(
 async def receive_order(
     session: AsyncSession, user: User, order_id: int, data: ReceiptIn
 ) -> PurchaseOrder:
-    """Goods receipt: every received line becomes stock in a lot (rule 2) through a
-    purchase movement (rule 5). All lines are received in one transaction."""
+    """Goods receipt: every received line becomes stock in a lot (INV-2) through a
+    purchase movement (INV-5). All lines are received in one transaction."""
     order = await get_order(session, order_id, lock=True)
     _require_draft(order)
     lines = {line.id: line for line in order.lines}

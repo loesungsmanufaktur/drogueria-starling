@@ -119,7 +119,7 @@ export const purchasingApi = {
 }
 
 export const customersApi = {
-  // Personal data goes in the request body, never in the URL (rule 22).
+  // Personal data goes in the request body, never in the URL (SEC-3).
   search: async (q: string) => (await http.post<Customer[]>('/customers/search', { q })).data,
   get: (id: number) => get<Customer>(`/customers/${id}`),
   create: async (body: Omit<Customer, 'id'>) =>

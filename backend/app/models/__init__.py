@@ -24,7 +24,7 @@ from app.models.user import Role, User
 
 ddl.install(Base.metadata)
 
-# Registers the audit trail listener for every session (rule 20).
+# Registers the audit trail listener for every session (SEC-1).
 from app.services import audit as _audit  # noqa: E402, F401
 
 __all__ = [

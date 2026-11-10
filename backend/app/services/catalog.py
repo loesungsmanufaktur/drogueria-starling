@@ -89,7 +89,7 @@ async def update_product(session: AsyncSession, product_id: int, data: ProductUp
 
 
 async def delete_product(session: AsyncSession, product_id: int) -> None:
-    """Rule 10: only a product without stock movements or sales can be deleted;
+    """CAT-4: only a product without stock movements or sales can be deleted;
     otherwise it must be deactivated. Foreign keys (ON DELETE RESTRICT) enforce it."""
     product = await get_product(session, product_id)
     await session.delete(product)

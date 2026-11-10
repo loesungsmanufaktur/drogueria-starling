@@ -1,0 +1,27 @@
+Rule Code,Description,Rule category
+INV-1,"Stock can never go negative — at product or lot level. A sale that exceeds available stock is rejected, not partially fulfilled.",Inventory & expiry
+INV-2,"Every product unit belongs to a lot with a lot number and an expiry date. No lot, no stock.",Inventory & expiry
+INV-3,Expired lots cannot be sold. A lot is sellable only if `expiry_date > today` (store timezone).,Inventory & expiry
+INV-4,"Sales consume stock **FEFO** (first expired, first out) unless a pharmacist overrides it, and the override is audited.",Inventory & expiry
+INV-5,Stock changes only through `stock_movements` entries. Movements are append-only: never updated or deleted; corrections are new compensating movements.,Inventory & expiry
+INV-6,Manual adjustments and expiry write-offs require `pharmacist` or `admin` and a reason.,Inventory & expiry
+CAT-1,sanitary registration number is an optional field.,Catalog & regulatory
+CAT-2,"Products flagged `requires_prescription` can only be sold with a prescription reference attached to the sale line, should accept jpg, jpeg, png or pdf",Catalog & regulatory
+CAT-3,"Products flagged `controlled` additionally require: customer identification, prescriber data, a pharmacist's approval on the sale, and quantity no greater than what the prescription allows.",Catalog & regulatory
+CAT-4,"Products are deactivated, never hard-deleted, once they have movements or sales.",Catalog & regulatory
+SAL-1,"All money uses `NUMERIC(14,2)` in the DB and `Decimal` in Python — never floats. Rounding is half-up at line level, then totals are summed.",Sales & money
+SAL-2,"Checkout is atomic: sale, lines, lot decrements, stock movements and payments are written in one transaction, or nothing is written.",Sales & money
+SAL-3,"Sum of payments must equal the sale total (change is computed for cash, not stored as payment).",Sales & money
+SAL-4,Prices and tax rates are copied onto each sale line at the moment of sale; later catalog changes never alter past sales.,Sales & money
+SAL-5,Completed sales are immutable. Corrections are done with a return or void document that references the original sale and restocks via movements.,Sales & money
+SAL-6,Voids are allowed only for the same register shift and require `pharmacist`/`admin`. Returns of Rx/controlled products require pharmacist approval.,Sales & money
+SAL-7,Discounts above the configured cashier limit require `pharmacist`/`admin` authorization. A sale price can never be below cost unless an admin authorizes it.,Sales & money
+SAL-8,"Receipt/invoice numbers are sequential, gap-free per register, and never reused.",Sales & money
+SAL-9,"A cashier must open a register shift (opening cash) before selling and close it (counted cash vs. expected) at the end; the difference is recorded, not hidden.",Sales & money
+SAL-10,Receipts must contain customer name and NIT/CUI,Sales & money
+SAL-11,"Card and transfers must contain a reference number, specific for cards the card type is required (visa, master card and amex are standards), for transfers the incoming bank name is required",Sales & money
+SAL-12,For card payments store the last 4 digits,Sales & money
+SEC-1,"Every create/update/delete on business data writes an audit log entry (who, when, what, before/after). Audit entries are append-only.",Security & audit
+SEC-2,Role permissions are checked on the backend for every endpoint.,Security & audit
+SEC-3,"Customer and prescription data are personal/health data: only the roles that need them can read them, and they never appear in logs.",Security & audit
+SEC-4,"All timestamps are stored in UTC (`timestamptz`); business dates (expiry, shift date) use the store's configured timezone.",Security & audit

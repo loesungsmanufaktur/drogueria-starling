@@ -1,4 +1,4 @@
-"""Rule 21: every endpoint checks authentication on the backend."""
+"""SEC-2: every endpoint checks authentication on the backend."""
 
 import re
 

@@ -1,4 +1,4 @@
-"""Automatic audit trail (rule 20).
+"""Automatic audit trail (SEC-1).
 
 Every flush that creates, updates or deletes an ORM row writes an
 ``audit_log`` entry with who, when, what and before/after values. The actor is

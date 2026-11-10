@@ -12,7 +12,7 @@ from app.services import inventory
 from tests.factories import auth, make_lot, make_product, make_user
 
 
-async def test_rule2_opening_stock_creates_lot_and_movement(
+async def test_inv2_opening_stock_creates_lot_and_movement(
     client: AsyncClient, session: AsyncSession
 ) -> None:
     pharmacist = await make_user(session, Role.PHARMACIST)
@@ -37,7 +37,7 @@ async def test_rule2_opening_stock_creates_lot_and_movement(
     assert [(m.type.value, m.quantity) for m in movements] == [("adjustment", 40)]
 
 
-async def test_rule1_adjustment_cannot_make_stock_negative(
+async def test_inv1_adjustment_cannot_make_stock_negative(
     client: AsyncClient, session: AsyncSession
 ) -> None:
     pharmacist = await make_user(session, Role.PHARMACIST)
@@ -51,7 +51,7 @@ async def test_rule1_adjustment_cannot_make_stock_negative(
     assert resp.json()["code"] == "INSUFFICIENT_STOCK"
 
 
-async def test_rule1_database_rejects_negative_lot_quantity(session: AsyncSession) -> None:
+async def test_inv1_database_rejects_negative_lot_quantity(session: AsyncSession) -> None:
     lot = await make_lot(session, await make_product(session), 2)
     with pytest.raises(DBAPIError, match="quantity_non_negative"):
         await session.execute(
@@ -63,7 +63,7 @@ async def test_rule1_database_rejects_negative_lot_quantity(session: AsyncSessio
     await session.rollback()
 
 
-async def test_rule5_lot_quantity_changes_only_through_movements(session: AsyncSession) -> None:
+async def test_inv5_lot_quantity_changes_only_through_movements(session: AsyncSession) -> None:
     lot = await make_lot(session, await make_product(session), 2)
     lot_id, product_id = lot.id, lot.product_id
     with pytest.raises(DBAPIError, match="only through stock_movements"):
@@ -79,7 +79,7 @@ async def test_rule5_lot_quantity_changes_only_through_movements(session: AsyncS
     await session.rollback()
 
 
-async def test_rule5_movements_are_append_only(session: AsyncSession) -> None:
+async def test_inv5_movements_are_append_only(session: AsyncSession) -> None:
     await make_lot(session, await make_product(session), 2)
     with pytest.raises(DBAPIError, match="immutable"):
         await session.execute(text("UPDATE stock_movements SET quantity = 50"))
@@ -89,7 +89,7 @@ async def test_rule5_movements_are_append_only(session: AsyncSession) -> None:
     await session.rollback()
 
 
-async def test_rule6_adjustments_need_pharmacist_and_reason(
+async def test_inv6_adjustments_need_pharmacist_and_reason(
     client: AsyncClient, session: AsyncSession
 ) -> None:
     cashier = await make_user(session, Role.CASHIER)
@@ -112,9 +112,7 @@ async def test_rule6_adjustments_need_pharmacist_and_reason(
     assert ok.json()["user_id"] == pharmacist.id
 
 
-async def test_rule6_write_off_only_expired_lots(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_inv6_write_off_only_expired_lots(client: AsyncClient, session: AsyncSession) -> None:
     pharmacist = await make_user(session, Role.PHARMACIST)
     product = await make_product(session)
     fresh = await make_lot(session, product, 5)
@@ -131,7 +129,7 @@ async def test_rule6_write_off_only_expired_lots(
     assert resp.json()["type"] == "expiry_write_off"
 
 
-async def test_rule3_rule4_allocation_is_fefo_and_skips_expired(session: AsyncSession) -> None:
+async def test_inv3_inv4_allocation_is_fefo_and_skips_expired(session: AsyncSession) -> None:
     product = await make_product(session)
     await make_lot(session, product, 10, expiry=store_today())  # expires today: not sellable
     late = await make_lot(session, product, 10, days=300)
@@ -148,7 +146,7 @@ async def test_rule3_rule4_allocation_is_fefo_and_skips_expired(session: AsyncSe
     await session.rollback()
 
 
-async def test_rule3_explicit_expired_lot_cannot_be_sold(session: AsyncSession) -> None:
+async def test_inv3_explicit_expired_lot_cannot_be_sold(session: AsyncSession) -> None:
     product = await make_product(session)
     expired = await make_lot(session, product, 5, expiry=store_today() - timedelta(days=1))
     with pytest.raises(inventory.AppError) as err:
@@ -157,7 +155,7 @@ async def test_rule3_explicit_expired_lot_cannot_be_sold(session: AsyncSession) 
     await session.rollback()
 
 
-async def test_rule20_movements_are_audited(client: AsyncClient, session: AsyncSession) -> None:
+async def test_sec1_movements_are_audited(client: AsyncClient, session: AsyncSession) -> None:
     pharmacist = await make_user(session, Role.PHARMACIST)
     lot = await make_lot(session, await make_product(session), 5)
     await client.post(

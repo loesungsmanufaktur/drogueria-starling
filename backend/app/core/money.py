@@ -5,5 +5,5 @@ ZERO = Decimal("0.00")
 
 
 def q2(value: Decimal) -> Decimal:
-    """Round half-up to cents (rule 11)."""
+    """Round half-up to cents (SAL-1)."""
     return value.quantize(CENT, rounding=ROUND_HALF_UP)

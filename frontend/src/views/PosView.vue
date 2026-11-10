@@ -192,7 +192,7 @@ function rxOptions(productId: number) {
 <template>
   <p v-if="loading" class="muted">{{ t('common.loading') }}</p>
 
-  <!-- No shift: open one first (rule 19). -->
+  <!-- No shift: open one first (SAL-9). -->
   <section v-else-if="!shift" class="card stack open-shift">
     <h1>{{ t('pos.noShift') }}</h1>
     <label>

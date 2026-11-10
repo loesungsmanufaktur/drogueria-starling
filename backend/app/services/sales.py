@@ -1,6 +1,6 @@
 """Point of sale: checkout, voids and returns.
 
-Every operation runs in a single transaction (rule 12): if any check fails the
+Every operation runs in a single transaction (SAL-2): if any check fails the
 exception propagates, nothing is committed, and the session rolls back.
 """
 
@@ -99,7 +99,7 @@ class PricedLine:
 
 
 def price_line(product: Product, data: SaleLineIn) -> PricedLine:
-    """Rule 11: Decimal math, half-up rounding per line; prices include tax."""
+    """SAL-1: Decimal math, half-up rounding per line; prices include tax."""
     gross = product.price * data.quantity
     discount = q2(gross * data.discount_percent / 100)
     total = gross - discount
@@ -112,7 +112,7 @@ async def checkout(
 ) -> Sale:
     settings = get_settings()
 
-    # Rule 19: the cashier must have an open shift on this register.
+    # SAL-9: the cashier must have an open shift on this register.
     register = await _lock_register(session, data.register_id)
     shift = (
         (
@@ -156,20 +156,20 @@ async def checkout(
         priced = price_line(product, item)
         lines.append(priced)
 
-        # Rule 17: discounts above the cashier limit need a pharmacist/admin.
+        # SAL-7: discounts above the cashier limit need a pharmacist/admin.
         if item.discount_percent > settings.cashier_discount_limit:
             needs_approval.append(
                 ("DISCOUNT_APPROVAL_REQUIRED", f"Discount above {settings.cashier_discount_limit}%")
             )
-        # Rule 17: selling below cost needs an admin.
+        # SAL-7: selling below cost needs an admin.
         if priced.total < product.cost * item.quantity:
             needs_admin = True
-        # Rule 9: controlled products need a pharmacist's approval on the sale.
+        # CAT-3: controlled products need a pharmacist's approval on the sale.
         if product.controlled:
             needs_approval.append(
                 ("CONTROLLED_APPROVAL_REQUIRED", f"{product.name} is a controlled product")
             )
-        # Rule 4: choosing a lot other than the FEFO one is a pharmacist override.
+        # INV-4: choosing a lot other than the FEFO one is a pharmacist override.
         if item.lot_id is not None:
             fefo_lot = await inventory.fefo_first_lot_id(session, product.id)
             if item.lot_id != fefo_lot:
@@ -190,7 +190,7 @@ async def checkout(
             raise Forbidden("BELOW_COST_APPROVAL_REQUIRED", "Price below cost needs admin approval")
         approver = admin
 
-    # --- prescriptions (rules 8 and 9) --------------------------------------
+    # --- prescriptions (CAT-2 and CAT-3) --------------------------------------
     prescriptions: dict[int, tuple[Prescription, dict[int, PrescriptionItem]]] = {}
     for priced in lines:
         product, item = priced.product, priced.data
@@ -232,7 +232,7 @@ async def checkout(
                     "Controlled products need the prescriber's name and license",
                 )
 
-    # --- payments (rule 13) -------------------------------------------------
+    # --- payments (SAL-3) -------------------------------------------------
     total = sum((p.total for p in lines), ZERO)
     tax_total = sum((p.tax for p in lines), ZERO)
     paid = sum((p.amount for p in data.payments), ZERO)
@@ -247,7 +247,7 @@ async def checkout(
             raise AppError("CASH_TENDERED_INSUFFICIENT", "Cash tendered is less than cash due")
         change = data.cash_tendered - cash
 
-    # --- write the sale (rule 18: gap-free receipt number) ------------------
+    # --- write the sale (SAL-8: gap-free receipt number) ------------------
     receipt_number = register.next_receipt_number
     register.next_receipt_number += 1
     sale = Sale(
@@ -273,7 +273,7 @@ async def checkout(
 
     for priced in lines:
         product, item = priced.product, priced.data
-        # Rules 1, 3, 4: FEFO (or approved lot), never expired, never short.
+        # INV-1, INV-3, INV-4: FEFO (or approved lot), never expired, never short.
         allocations = await inventory.allocate(session, product, item.quantity, item.lot_id)
         session.add(
             SaleLine(
@@ -317,7 +317,7 @@ async def _release_prescription(session: AsyncSession, line: SaleLine, quantity:
 async def void_sale(
     session: AsyncSession, user: User, approval_token: str | None, sale_id: int, reason: str
 ) -> Sale:
-    """Rule 16: same shift only, pharmacist/admin approval, stock goes back to its lots."""
+    """SAL-6: same shift only, pharmacist/admin approval, stock goes back to its lots."""
     approver = await auth.require_approver(
         session, user, approval_token, "VOID_APPROVAL_REQUIRED", "Voids need a pharmacist or admin"
     )
@@ -366,8 +366,8 @@ async def void_sale(
 async def return_sale(
     session: AsyncSession, user: User, approval_token: str | None, sale_id: int, data: ReturnIn
 ) -> SaleReturn:
-    """Rule 15: corrections are return documents that reference the sale and restock lots.
-    Rule 16: returning Rx/controlled products needs a pharmacist."""
+    """SAL-5: corrections are return documents that reference the sale and restock lots.
+    SAL-6: returning Rx/controlled products needs a pharmacist."""
     sale = await get_sale(session, sale_id, lock=True)
     if sale.void is not None:
         raise Conflict("SALE_VOIDED", "Sale was voided")

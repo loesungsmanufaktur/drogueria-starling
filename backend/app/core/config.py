@@ -42,5 +42,5 @@ def get_settings() -> Settings:
 
 
 def store_today() -> date:
-    """Business date in the store's timezone (rule 23)."""
+    """Business date in the store's timezone (SEC-4)."""
     return datetime.now(get_settings().tz).date()

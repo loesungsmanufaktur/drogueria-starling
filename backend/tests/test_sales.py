@@ -99,7 +99,7 @@ async def test_checkout_prices_taxes_and_change(
     assert body["receipt_number"] == 1
 
 
-async def test_rule11_half_up_rounding_per_line(
+async def test_sal1_half_up_rounding_per_line(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="0.25", tax_rate="12.00", cost="0.01")
@@ -114,7 +114,7 @@ async def test_rule11_half_up_rounding_per_line(
     assert resp.json()["lines"][0]["discount_amount"] == "0.03"
 
 
-async def test_rule18_receipt_numbers_are_sequential_without_gaps(
+async def test_sal8_receipt_numbers_are_sequential_without_gaps(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="10.00")
@@ -129,7 +129,7 @@ async def test_rule18_receipt_numbers_are_sequential_without_gaps(
 # --- stock -----------------------------------------------------------------
 
 
-async def test_rule1_rule12_short_stock_rejects_whole_sale(
+async def test_inv1_sal2_short_stock_rejects_whole_sale(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     ok = await make_product(session, price="10.00")
@@ -155,7 +155,7 @@ async def test_rule1_rule12_short_stock_rejects_whole_sale(
     assert sale_moves.first() is None
 
 
-async def test_rule3_rule4_sale_uses_fefo_and_skips_expired(
+async def test_inv3_inv4_sale_uses_fefo_and_skips_expired(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="5.00", cost="1.00")
@@ -170,7 +170,7 @@ async def test_rule3_rule4_sale_uses_fefo_and_skips_expired(
     assert lots == [{"lot_id": early.id, "quantity": 2}, {"lot_id": late.id, "quantity": 1}]
 
 
-async def test_rule4_fefo_override_needs_pharmacist_and_is_audited(
+async def test_inv4_fefo_override_needs_pharmacist_and_is_audited(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="5.00", cost="1.00")
@@ -193,7 +193,7 @@ async def test_rule4_fefo_override_needs_pharmacist_and_is_audited(
 # --- payments, discounts, cost -----------------------------------------------
 
 
-async def test_rule13_payments_must_equal_total(
+async def test_sal3_payments_must_equal_total(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="10.00")
@@ -217,7 +217,7 @@ async def test_rule13_payments_must_equal_total(
     assert len(split.json()["payments"]) == 2
 
 
-async def test_rule17_discount_above_limit_needs_approval(
+async def test_sal7_discount_above_limit_needs_approval(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="100.00", cost="10.00")
@@ -230,7 +230,7 @@ async def test_rule17_discount_above_limit_needs_approval(
     assert ok.status_code == 201
 
 
-async def test_rule17_below_cost_needs_admin(
+async def test_sal7_below_cost_needs_admin(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="10.00", cost="9.50")
@@ -256,7 +256,7 @@ async def test_cashier_cannot_approve_own_discount(
 # --- shifts --------------------------------------------------------------------
 
 
-async def test_rule19_cannot_sell_without_own_open_shift(
+async def test_sal9_cannot_sell_without_own_open_shift(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="10.00")
@@ -270,7 +270,7 @@ async def test_rule19_cannot_sell_without_own_open_shift(
     assert resp.json()["code"] == "NO_OPEN_SHIFT"
 
 
-async def test_rule19_close_shift_records_difference(
+async def test_sal9_close_shift_records_difference(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="10.00")
@@ -309,7 +309,7 @@ async def test_only_one_open_shift_per_register(
 # --- immutability, voids, returns -------------------------------------------------
 
 
-async def test_rule14_past_sales_keep_their_price(
+async def test_sal4_past_sales_keep_their_price(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="10.00", tax_rate="12.00")
@@ -326,7 +326,7 @@ async def test_rule14_past_sales_keep_their_price(
     assert (line["unit_price"], line["tax_rate"], line["line_total"]) == ("10.00", "12.00", "10.00")
 
 
-async def test_rule15_completed_sales_are_immutable(
+async def test_sal5_completed_sales_are_immutable(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="10.00")
@@ -342,7 +342,7 @@ async def test_rule15_completed_sales_are_immutable(
         await session.rollback()
 
 
-async def test_rule16_void_needs_approval_same_shift_and_restocks(
+async def test_sal6_void_needs_approval_same_shift_and_restocks(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="10.00")
@@ -372,7 +372,7 @@ async def test_rule16_void_needs_approval_same_shift_and_restocks(
     assert again.json()["code"] == "SALE_ALREADY_VOIDED"
 
 
-async def test_rule16_void_not_allowed_after_shift_closed(
+async def test_sal6_void_not_allowed_after_shift_closed(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="10.00")
@@ -391,7 +391,7 @@ async def test_rule16_void_not_allowed_after_shift_closed(
     assert resp.json()["code"] == "VOID_SHIFT_CLOSED"
 
 
-async def test_rule15_partial_returns_restock_and_refund_exactly(
+async def test_sal5_partial_returns_restock_and_refund_exactly(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     product = await make_product(session, price="3.33", cost="1.00")
@@ -426,7 +426,7 @@ async def test_rule15_partial_returns_restock_and_refund_exactly(
     assert [first.json()["document_number"], second.json()["document_number"]] == [1, 2]
 
 
-# --- prescriptions and controlled products (rules 8, 9, 22) -------------------
+# --- prescriptions and controlled products (CAT-2, CAT-3, SEC-3) -------------------
 
 
 async def _customer(session: AsyncSession, document_id: str | None = "1234567890101") -> Customer:
@@ -461,7 +461,7 @@ async def _prescription(
     )
 
 
-async def test_rule8_prescription_file_types(
+async def test_cat2_prescription_file_types(
     client: AsyncClient, session: AsyncSession, pos: Pos, tmp_path: Any, monkeypatch: Any
 ) -> None:
     from app.core.config import get_settings
@@ -482,7 +482,7 @@ async def test_rule8_prescription_file_types(
         assert resp.json()["code"] == "INVALID_FILE_TYPE", name
 
 
-async def test_rule8_rx_product_needs_prescription_with_quantity_limit(
+async def test_cat2_rx_product_needs_prescription_with_quantity_limit(
     client: AsyncClient, session: AsyncSession, pos: Pos, tmp_path: Any, monkeypatch: Any
 ) -> None:
     from app.core.config import get_settings
@@ -507,7 +507,7 @@ async def test_rule8_rx_product_needs_prescription_with_quantity_limit(
     assert exceeded.json()["code"] == "PRESCRIPTION_QUANTITY_EXCEEDED"
 
 
-async def test_rule9_controlled_needs_id_prescriber_and_pharmacist(
+async def test_cat3_controlled_needs_id_prescriber_and_pharmacist(
     client: AsyncClient, session: AsyncSession, pos: Pos, tmp_path: Any, monkeypatch: Any
 ) -> None:
     from app.core.config import get_settings
@@ -552,7 +552,7 @@ async def test_rule9_controlled_needs_id_prescriber_and_pharmacist(
     assert ok.json()["approved_by"] == pos.pharmacist.id
 
 
-async def test_rule16_rx_return_needs_pharmacist(
+async def test_sal6_rx_return_needs_pharmacist(
     client: AsyncClient, session: AsyncSession, pos: Pos, tmp_path: Any, monkeypatch: Any
 ) -> None:
     from app.core.config import get_settings
@@ -587,7 +587,7 @@ async def test_rule16_rx_return_needs_pharmacist(
     assert rx_after["items"][0]["dispensed_quantity"] == 0
 
 
-async def test_rule22_prescription_file_only_for_pharmacist(
+async def test_sec3_prescription_file_only_for_pharmacist(
     client: AsyncClient, session: AsyncSession, pos: Pos, tmp_path: Any, monkeypatch: Any
 ) -> None:
     from app.core.config import get_settings
@@ -603,7 +603,7 @@ async def test_rule22_prescription_file_only_for_pharmacist(
     assert resp.content == PNG
 
 
-async def test_rule22_customer_search_uses_body_not_url(
+async def test_sec3_customer_search_uses_body_not_url(
     client: AsyncClient, session: AsyncSession, pos: Pos
 ) -> None:
     await _customer(session)

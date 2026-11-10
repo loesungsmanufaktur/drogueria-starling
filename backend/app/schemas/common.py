@@ -3,7 +3,7 @@ from typing import Annotated
 
 from pydantic import BaseModel, ConfigDict, Field
 
-# Rule 11: money is Decimal with 2 decimal places, never float.
+# SAL-1: money is Decimal with 2 decimal places, never float.
 Money = Annotated[Decimal, Field(ge=0, max_digits=14, decimal_places=2)]
 Percent = Annotated[Decimal, Field(ge=0, le=100, max_digits=5, decimal_places=2)]
 

@@ -19,8 +19,8 @@ Money = Numeric(14, 2)
 class Base(DeclarativeBase):
     metadata = MetaData(naming_convention=NAMING_CONVENTION)
     type_annotation_map = {
-        Decimal: Money,  # rule 11: money is NUMERIC(14,2), never float
-        datetime: DateTime(timezone=True),  # rule 23: timestamps are timestamptz (UTC)
+        Decimal: Money,  # SAL-1: money is NUMERIC(14,2), never float
+        datetime: DateTime(timezone=True),  # SEC-4: timestamps are timestamptz (UTC)
     }
 
 

@@ -30,7 +30,7 @@ class Register(IdMixin, Base):
     code: Mapped[str] = mapped_column(String(20), unique=True)
     name: Mapped[str] = mapped_column(String(80))
     is_active: Mapped[bool] = mapped_column(default=True, server_default=true())
-    # Rule 18: gap-free counters, incremented under a row lock in the same transaction.
+    # SAL-8: gap-free counters, incremented under a row lock in the same transaction.
     next_receipt_number: Mapped[int] = mapped_column(default=1, server_default="1")
     next_credit_number: Mapped[int] = mapped_column(default=1, server_default="1")
 
@@ -41,7 +41,7 @@ class ShiftStatus(StrEnum):
 
 
 class RegisterShift(IdMixin, Base):
-    """Rule 19: selling requires an open shift; closing records counted vs expected cash."""
+    """SAL-9: selling requires an open shift; closing records counted vs expected cash."""
 
     __tablename__ = "register_shifts"
     __table_args__ = (
@@ -89,7 +89,7 @@ class PaymentMethod(StrEnum):
 
 
 class Sale(IdMixin, CreatedAtMixin, Base):
-    """Completed sales are immutable (rule 15); see the triggers below."""
+    """Completed sales are immutable (SAL-5); see the triggers below."""
 
     __tablename__ = "sales"
     __table_args__ = (
@@ -127,7 +127,7 @@ class Sale(IdMixin, CreatedAtMixin, Base):
 
 
 class SaleLine(IdMixin, Base):
-    """Prices and tax rates are copied at the moment of sale (rule 14)."""
+    """Prices and tax rates are copied at the moment of sale (SAL-4)."""
 
     __tablename__ = "sale_lines"
     __table_args__ = (CheckConstraint("quantity > 0", name="quantity_positive"),)
@@ -170,7 +170,7 @@ class Payment(IdMixin, Base):
 
 
 class SaleVoid(IdMixin, CreatedAtMixin, Base):
-    """Cancels a whole sale within its own shift (rule 16)."""
+    """Cancels a whole sale within its own shift (SAL-6)."""
 
     __tablename__ = "sale_voids"
 

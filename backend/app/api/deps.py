@@ -31,7 +31,7 @@ async def get_current_user(
 
 
 def require_roles(*roles: Role) -> Callable[[User], Awaitable[User]]:
-    """Backend role check (rule 21). With no roles, any authenticated user passes."""
+    """Backend role check (SEC-2). With no roles, any authenticated user passes."""
 
     async def dependency(user: Annotated[User, Depends(get_current_user)]) -> User:
         if roles and user.role not in roles:

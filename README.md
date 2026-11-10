@@ -2,7 +2,8 @@
 
 Product catalog with an integrated point of sale (POS) for medicine retail stores.
 Vue 3 + FastAPI + PostgreSQL. Architecture: [docs/architecture.png](docs/architecture.png).
-Business rules, assumptions and conventions: [CLAUDE.md](CLAUDE.md).
+Business rules: [docs/business-rules.csv](docs/business-rules.csv).
+Assumptions and conventions: [CLAUDE.md](CLAUDE.md).
 
 ## What it does
 
@@ -83,8 +84,8 @@ Frontend (from `frontend/`):
 npm test && npm run type-check && npm run lint && npm run build
 ```
 
-Every rule in [CLAUDE.md → Strict business rules](CLAUDE.md#strict-business-rules) has at
-least one backend test named after it (`test_ruleN_…`).
+Every rule in [docs/business-rules.csv](docs/business-rules.csv) has at least one backend test
+named after its code, e.g. `test_inv1_…` for INV-1 or `test_sal7_…` for SAL-7.
 
 ## Project layout
 

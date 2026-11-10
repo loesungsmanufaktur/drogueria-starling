@@ -52,9 +52,7 @@ async def test_refresh_token_cannot_be_used_as_access_token(
     assert resp.json()["code"] == "TOKEN_INVALID"
 
 
-async def test_rule21_cashier_cannot_manage_users(
-    client: AsyncClient, session: AsyncSession
-) -> None:
+async def test_sec2_cashier_cannot_manage_users(client: AsyncClient, session: AsyncSession) -> None:
     cashier = await make_user(session, Role.CASHIER)
     resp = await client.get("/api/v1/users", headers=auth(cashier))
     assert resp.status_code == 403
@@ -104,7 +102,7 @@ async def test_admin_creates_user_and_change_is_audited_without_password(
     assert dup.json()["code"] == "USERNAME_TAKEN"
 
 
-async def test_rule20_update_records_before_and_after(
+async def test_sec1_update_records_before_and_after(
     client: AsyncClient, session: AsyncSession
 ) -> None:
     admin = await make_user(session, Role.ADMIN)
@@ -120,7 +118,7 @@ async def test_rule20_update_records_before_and_after(
     assert update["after"]["is_active"] is False
 
 
-async def test_rule20_audit_log_is_append_only(session: AsyncSession) -> None:
+async def test_sec1_audit_log_is_append_only(session: AsyncSession) -> None:
     await make_user(session, Role.ADMIN)
     with pytest.raises(DBAPIError, match="immutable"):
         await session.execute(text("UPDATE audit_log SET action = 'tampered'"))

@@ -9,7 +9,7 @@ from app.db.base import Base, CreatedAtMixin, IdMixin
 
 
 class AuditLog(IdMixin, CreatedAtMixin, Base):
-    """Append-only record of every change to business data (rule 20)."""
+    """Append-only record of every change to business data (SEC-1)."""
 
     __tablename__ = "audit_log"
     __table_args__ = (Index("ix_audit_log_entity", "entity", "entity_id"),)

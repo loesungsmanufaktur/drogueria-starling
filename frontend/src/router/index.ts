@@ -53,7 +53,7 @@ const routes: RouteRecordRaw[] = [
 
 export const router = createRouter({ history: createWebHistory(), routes })
 
-// Navigation follows the role, but the backend enforces every permission (rule 21).
+// Navigation follows the role, but the backend enforces every permission (SEC-2).
 router.beforeEach(async (to) => {
   if (to.meta.public) return true
   const auth = useAuthStore()

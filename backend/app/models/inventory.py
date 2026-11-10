@@ -28,12 +28,12 @@ class MovementType(StrEnum):
 
 
 class Lot(IdMixin, CreatedAtMixin, Base):
-    """Every unit in stock belongs to a lot with an expiry date (rule 2)."""
+    """Every unit in stock belongs to a lot with an expiry date (INV-2)."""
 
     __tablename__ = "lots"
     __table_args__ = (
         UniqueConstraint("product_id", "lot_number", name="uq_lots_product_lot_number"),
-        # Rule 1: stock can never go negative.
+        # INV-1: stock can never go negative.
         CheckConstraint("quantity >= 0", name="quantity_non_negative"),
         Index("ix_lots_product_expiry", "product_id", "expiry_date"),
     )
@@ -41,7 +41,7 @@ class Lot(IdMixin, CreatedAtMixin, Base):
     product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="RESTRICT"))
     lot_number: Mapped[str] = mapped_column(String(60))
     expiry_date: Mapped[date]
-    # Maintained only by the stock_movements trigger (rule 5).
+    # Maintained only by the stock_movements trigger (INV-5).
     quantity: Mapped[int] = mapped_column(default=0, server_default="0")
     unit_cost: Mapped[Decimal]
 
@@ -49,7 +49,7 @@ class Lot(IdMixin, CreatedAtMixin, Base):
 
 
 class StockMovement(IdMixin, CreatedAtMixin, Base):
-    """Append-only stock ledger (rule 5)."""
+    """Append-only stock ledger (INV-5)."""
 
     __tablename__ = "stock_movements"
     __table_args__ = (

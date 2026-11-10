@@ -29,7 +29,7 @@ async def stock_by_product(session: AsyncSession, product_ids: list[int]) -> dic
 
 
 def is_sellable(lot: Lot, today: date | None = None) -> bool:
-    """Rule 3: a lot is sellable only if it expires strictly after today (store tz)."""
+    """INV-3: a lot is sellable only if it expires strictly after today (store tz)."""
     return lot.expiry_date > (today or store_today())
 
 
@@ -52,7 +52,7 @@ async def lock_lot(session: AsyncSession, lot_id: int) -> Lot:
 
 
 async def lock_sellable_lots(session: AsyncSession, product_id: int) -> list[Lot]:
-    """Sellable lots in FEFO order (rule 4), locked for the current transaction."""
+    """Sellable lots in FEFO order (INV-4), locked for the current transaction."""
     stmt = (
         select(Lot)
         .where(Lot.product_id == product_id, Lot.quantity > 0, Lot.expiry_date > store_today())
@@ -72,7 +72,7 @@ async def record_movement(
     reason: str | None = None,
     reference: tuple[str, int] | None = None,
 ) -> StockMovement:
-    """The only way stock changes (rule 5). The caller must hold a lock on ``lot``."""
+    """The only way stock changes (INV-5). The caller must hold a lock on ``lot``."""
     if lot.quantity + quantity < 0:
         raise InsufficientStock(
             "INSUFFICIENT_STOCK",
@@ -103,8 +103,8 @@ class Allocation:
 async def allocate(
     session: AsyncSession, product: Product, quantity: int, lot_id: int | None = None
 ) -> list[Allocation]:
-    """Pick lots for a sale: FEFO, or one explicit lot when overridden (rule 4).
-    Rejects the whole request if stock is short (rule 1) or the lot is expired (rule 3)."""
+    """Pick lots for a sale: FEFO, or one explicit lot when overridden (INV-4).
+    Rejects the whole request if stock is short (INV-1) or the lot is expired (INV-3)."""
     if lot_id is not None:
         lot = await lock_lot(session, lot_id)
         if lot.product_id != product.id:
@@ -162,7 +162,7 @@ async def create_opening_lot(session: AsyncSession, user: User, data: OpeningLot
 
 
 async def adjust(session: AsyncSession, user: User, data: AdjustmentIn) -> StockMovement:
-    """Rule 6: manual adjustments need pharmacist/admin (checked by the route) and a reason."""
+    """INV-6: manual adjustments need pharmacist/admin (checked by the route) and a reason."""
     lot = await lock_lot(session, data.lot_id)
     movement = await record_movement(
         session, lot, data.quantity, MovementType.ADJUSTMENT, user, data.reason
@@ -174,7 +174,7 @@ async def adjust(session: AsyncSession, user: User, data: AdjustmentIn) -> Stock
 async def write_off_expired(
     session: AsyncSession, user: User, lot_id: int, reason: str
 ) -> StockMovement:
-    """Rule 6: remove the remaining units of an expired lot, with a reason."""
+    """INV-6: remove the remaining units of an expired lot, with a reason."""
     lot = await lock_lot(session, lot_id)
     if is_sellable(lot):
         raise AppError("LOT_NOT_EXPIRED", "Only expired lots can be written off")
@@ -190,7 +190,7 @@ async def write_off_expired(
 async def record_fefo_override(
     session: AsyncSession, approver: User, product_id: int, lot_id: int, fefo_lot_id: int | None
 ) -> None:
-    """Rule 4: a pharmacist overriding FEFO is audited."""
+    """INV-4: a pharmacist overriding FEFO is audited."""
     audit.record(
         session.sync_session,
         "fefo_override",

@@ -10,7 +10,7 @@ from app.core.errors import AppError, Conflict, NotFound
 from app.models import Customer, Prescription, PrescriptionItem, Product, User
 from app.schemas.customers import CustomerIn, CustomerUpdate, PrescriptionMeta
 
-# Rule 8: prescriptions are attached as JPG/JPEG, PNG or PDF, checked by
+# CAT-2: prescriptions are attached as JPG/JPEG, PNG or PDF, checked by
 # extension *and* file signature so a renamed file is not accepted.
 ALLOWED_FILES: dict[str, tuple[str, tuple[bytes, ...]]] = {
     "jpg": ("image/jpeg", (b"\xff\xd8\xff",)),

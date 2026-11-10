@@ -13,7 +13,7 @@ PRODUCT = {
 }
 
 
-async def test_rule7_sanitary_registration_is_optional(
+async def test_cat1_sanitary_registration_is_optional(
     client: AsyncClient, session: AsyncSession
 ) -> None:
     pharmacist = await make_user(session, Role.PHARMACIST)
@@ -97,7 +97,7 @@ async def test_duplicate_barcode_is_rejected(client: AsyncClient, session: Async
     assert resp.json()["code"] == "BARCODE_TAKEN"
 
 
-async def test_rule10_product_with_history_is_deactivated_not_deleted(
+async def test_cat4_product_with_history_is_deactivated_not_deleted(
     client: AsyncClient, session: AsyncSession
 ) -> None:
     admin = await make_user(session, Role.ADMIN)

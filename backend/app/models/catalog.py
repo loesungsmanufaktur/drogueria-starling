@@ -54,7 +54,7 @@ class Product(IdMixin, CreatedAtMixin, Base):
     presentation: Mapped[str | None] = mapped_column(String(120))
     category_id: Mapped[int | None] = mapped_column(ForeignKey("categories.id"))
     barcode: Mapped[str | None] = mapped_column(String(64), unique=True)
-    # Rule 7: sanitary registration is optional.
+    # CAT-1: sanitary registration is optional.
     sanitary_registration: Mapped[str | None] = mapped_column(String(60))
     requires_prescription: Mapped[bool] = mapped_column(default=False, server_default=false())
     controlled: Mapped[bool] = mapped_column(default=False, server_default=false())

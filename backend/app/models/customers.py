@@ -8,7 +8,7 @@ from app.models.catalog import Product
 
 
 class Customer(IdMixin, CreatedAtMixin, Base):
-    """Personal data (rule 22): never logged, readable only by roles that need it."""
+    """Personal data (SEC-3): never logged, readable only by roles that need it."""
 
     __tablename__ = "customers"
 
@@ -19,7 +19,7 @@ class Customer(IdMixin, CreatedAtMixin, Base):
 
 
 class Prescription(IdMixin, CreatedAtMixin, Base):
-    """Health data (rule 22). The scanned prescription is required (rule 8)."""
+    """Health data (SEC-3). The scanned prescription is required (CAT-2)."""
 
     __tablename__ = "prescriptions"
 

@@ -1,4 +1,4 @@
-// Integer-cent arithmetic that mirrors the backend rules (rule 11): no floats,
+// Integer-cent arithmetic that mirrors the backend rules (SAL-1): no floats,
 // half-up rounding per line. The server stays authoritative; this preview lets
 // the cashier see the same total the API will charge.
 

@@ -81,7 +81,7 @@ async def get_prescription(session: Session, _: AnyUser, prescription_id: int) -
     return await customers_service.get_prescription(session, prescription_id)
 
 
-# Rule 22: the scanned document itself is only for pharmacists and admins.
+# SEC-3: the scanned document itself is only for pharmacists and admins.
 @router.get("/prescriptions/{prescription_id}/file", response_class=FileResponse)
 async def prescription_file(session: Session, _: Staff, prescription_id: int) -> FileResponse:
     prescription = await customers_service.get_prescription(session, prescription_id)

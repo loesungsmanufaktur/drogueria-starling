@@ -20,7 +20,7 @@ class CustomerUpdate(BaseModel):
 
 
 class CustomerSearch(BaseModel):
-    """Sent in the body, not the URL, so personal data stays out of access logs (rule 22)."""
+    """Sent in the body, not the URL, so personal data stays out of access logs (SEC-3)."""
 
     q: str = Field(min_length=1, max_length=160)
 

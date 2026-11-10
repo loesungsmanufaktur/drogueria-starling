@@ -21,7 +21,7 @@ from app.schemas.reports import (
 
 
 def day_bounds(day: date) -> tuple[datetime, datetime]:
-    """UTC bounds of a business day in the store's timezone (rule 23)."""
+    """UTC bounds of a business day in the store's timezone (SEC-4)."""
     tz = get_settings().tz
     start = datetime.combine(day, time.min, tzinfo=tz).astimezone(UTC)
     return start, start + timedelta(days=1)
