@@ -1,0 +1,37 @@
+# The database is NOT defined here: the app uses the existing Postgres
+# container `order-management-db` on the external network `database_default`.
+# Values like POSTGRES_USER come from the repo's .env file.
+name: drogueria-starling
+
+services:
+  api:
+    build: ./backend
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@order-management-db:5432/${POSTGRES_DB}
+      ENABLE_SCHEDULER: "true"
+      UPLOAD_DIR: /app/uploads
+    volumes:
+      - prescriptions:/app/uploads
+    networks:
+      - default
+      - database
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "8081:80"
+    networks:
+      - default
+
+volumes:
+  prescriptions:
+
+networks:
+  database:
+    name: ${POSTGRES_DOCKER_NETWORK:-database_default}
+    external: true
